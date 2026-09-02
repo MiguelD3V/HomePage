@@ -1,0 +1,630 @@
+@import "tailwindcss";
+
+/* ==========================================================================
+   MarkePro — Design System
+   Paleta monocromática, dark-only. A hierarquia é construída por contraste
+   tonal, escala e espaço — nunca por cor.
+
+   REGRA CENTRAL: branco sólido preenchido (--color-accent) é exclusivo do
+   CTA primário. Nenhum outro elemento da página pode usá-lo como fundo.
+   ========================================================================== */
+
+@theme {
+  /* --- Fundos ------------------------------------------------------------ */
+  --color-base: #000000;
+  --color-surface: #0a0a0b;
+  --color-surface-hover: #111113;
+  --color-elevated: #18181b;
+
+  /* --- Texto ------------------------------------------------------------- */
+  --color-primary: #fafafa; /* 19.8:1 sobre preto — AAA */
+  --color-muted: #a1a1aa; /*  8.6:1 sobre preto — AAA */
+  --color-subtle: #71717a; /*  4.7:1 sobre preto — AA (não usar < 13px) */
+  --color-inverse: #000000;
+
+  /* --- Destaque ---------------------------------------------------------- */
+  --color-accent: #ffffff;
+  --color-accent-hover: #e4e4e7;
+
+  /* --- Cores funcionais (única exceção à monocromia — só no formulário) --- */
+  --color-error: #f87171;
+  --color-success: #4ade80;
+
+  /* --- Bordas ------------------------------------------------------------ */
+  --color-line: rgba(255, 255, 255, 0.08);
+  --color-line-strong: rgba(255, 255, 255, 0.14);
+  --color-line-focus: rgba(255, 255, 255, 0.24);
+
+  /* --- Tipografia -------------------------------------------------------- */
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, "SFMono-Regular", monospace;
+
+  /* Escala fluida. Tracking negativo é obrigatório em tamanhos grandes —
+     é o detalhe que separa tipografia profissional de amadora. */
+  --text-display: clamp(2.5rem, 6vw, 4.5rem);
+  --text-display--line-height: 1.05;
+  --text-display--letter-spacing: -0.045em;
+  --text-display--font-weight: 600;
+
+  --text-h2: clamp(2rem, 4vw, 3rem);
+  --text-h2--line-height: 1.1;
+  --text-h2--letter-spacing: -0.035em;
+  --text-h2--font-weight: 600;
+
+  --text-h3: clamp(1.25rem, 2vw, 1.5rem);
+  --text-h3--line-height: 1.25;
+  --text-h3--letter-spacing: -0.02em;
+  --text-h3--font-weight: 600;
+
+  --text-h4: 1.125rem;
+  --text-h4--line-height: 1.4;
+  --text-h4--letter-spacing: -0.01em;
+  --text-h4--font-weight: 600;
+
+  --text-body-lg: 1.125rem;
+  --text-body-lg--line-height: 1.6;
+  --text-body-lg--letter-spacing: -0.01em;
+
+  --text-body: 1rem;
+  --text-body--line-height: 1.65;
+
+  --text-body-sm: 0.9375rem;
+  --text-body-sm--line-height: 1.6;
+
+  --text-caption: 0.8125rem;
+  --text-caption--line-height: 1.5;
+
+  --text-eyebrow: 0.75rem;
+  --text-eyebrow--line-height: 1;
+  --text-eyebrow--letter-spacing: 0.12em;
+  --text-eyebrow--font-weight: 500;
+
+  /* --- Raios ------------------------------------------------------------- */
+  --radius-sm: 8px;
+  --radius-md: 10px; /* botões: raio médio lê como "software", pill lê como "consumer app" */
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+
+  /* --- Easing ------------------------------------------------------------ */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Triplet RGB (sem função, sem alpha) usado por overlays translúcidos,
+   glows decorativos e a borda-gradiente. Existe separado dos tokens de cor
+   porque esses efeitos são consumidos como `rgb(var(--fg-rgb) / alfa)` —
+   uma cor sólida normal não permite compor a opacidade dessa forma.
+   Escuro por padrão; a seção clara sobrescreve para preto. */
+:root {
+  --fg-rgb: 255 255 255;
+  /* Oposto de --fg-rgb. Usado pelo brilho que atravessa o CTA primário: como
+     o botão é preenchido na cor de maior contraste, o único brilho visível
+     sobre ele é feito da cor inversa. */
+  --inverse-rgb: 0 0 0;
+  /* Sombra projetada é sempre preta nos dois tons — o que muda é a força.
+     Sobre preto ela precisa ser densa para existir; sobre branco, a mesma
+     densidade vira uma mancha suja. Daí um token de intensidade, e não uma
+     cor derivada de --fg-rgb (que inverteria para branco e sumiria). */
+  --shadow-strength: 0.5;
+}
+
+/* Ângulo registrado: sem @property o navegador trata --angle como string e
+   não interpola — a borda cônica animada ficaria parada. */
+@property --angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+/* ==========================================================================
+   Tom claro — alterna com o escuro para dar ritmo à página e evitar a
+   monotonia de uma home inteiramente preta.
+
+   Aplicado via `data-tone="light"` num wrapper de <Section>. Como os
+   componentes do sistema todos leem cor pelos tokens (--color-primary,
+   --color-muted, --color-surface...) e nunca um valor cru, bastar
+   sobrescrever os tokens aqui já reconfigura cards, botões, badges, bordas
+   e formulários inteiros — nenhum componente precisa saber em qual tom está.
+
+   A regra de contraste máximo se mantém, só que invertida: no tom escuro o
+   CTA primário é branco sólido sobre preto; no tom claro vira preto sólido
+   sobre branco. Em ambos os casos é o único elemento da seção com
+   preenchimento 100% opaco na cor de maior contraste. */
+[data-tone="light"] {
+  --color-base: #ffffff;
+  --color-surface: #f7f7f8;
+  --color-surface-hover: #efeff0;
+  --color-elevated: #ffffff;
+
+  --color-primary: #0a0a0b; /* 19.8:1 sobre branco — AAA */
+  --color-muted: #52525b; /*  7.5:1 sobre branco — AAA */
+  --color-subtle: #71717a; /*  4.6:1 sobre branco — AA (não usar < 13px) */
+  --color-inverse: #ffffff;
+
+  --color-accent: #0a0a0b;
+  --color-accent-hover: #27272a;
+
+  --color-line: rgba(0, 0, 0, 0.08);
+  --color-line-strong: rgba(0, 0, 0, 0.14);
+  --color-line-focus: rgba(0, 0, 0, 0.24);
+
+  --fg-rgb: 10 10 11;
+  --inverse-rgb: 255 255 255;
+  --shadow-strength: 0.08;
+}
+
+/* ==========================================================================
+   Base
+   ========================================================================== */
+
+@layer base {
+  * {
+    border-color: var(--color-line);
+  }
+
+  html {
+    scroll-behavior: smooth;
+    /* Compensa a navbar sticky ao navegar por âncora. Sem isto o título
+       da seção fica escondido atrás da navbar. */
+    scroll-padding-top: 6rem;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--color-base);
+    color: var(--color-muted);
+    font-family: var(--font-sans);
+    font-size: var(--text-body);
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    /* Nenhum scroll horizontal em nenhum breakpoint. */
+    overflow-x: hidden;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    color: var(--color-primary);
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  /* Foco visível em tudo que é interativo. Nunca remover sem substituto. */
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  ::selection {
+    background-color: var(--color-accent);
+    color: var(--color-inverse);
+  }
+
+  /* Números alinhados em estatísticas e tabelas. */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* ==========================================================================
+   Utilitários do sistema
+   ========================================================================== */
+
+/* Container padrão do site. */
+@utility container-page {
+  width: 100%;
+  max-width: 1200px;
+  margin-inline: auto;
+  padding-inline: 1.5rem;
+  @media (width >= 768px) {
+    padding-inline: 2rem;
+  }
+}
+
+/* Ritmo vertical de seção: 80px → 112px → 160px. */
+@utility section-y {
+  padding-block: 5rem;
+  @media (width >= 768px) {
+    padding-block: 7rem;
+  }
+  @media (width >= 1024px) {
+    padding-block: 10rem;
+  }
+}
+
+/* Elevação por luz, não por sombra: em fundo preto a sombra some, então a
+   profundidade vem de um brilho superior que simula luz vindo de cima. */
+@utility elev-1 {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+@utility elev-2 {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+@utility elev-3 {
+  box-shadow:
+    0 16px 48px rgba(0, 0, 0, 0.7),
+    0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+/* Elevação de hover dos cards. Diferente de elev-1/2/3, que são fixas na
+   paleta escura: esta acompanha o tom da seção. Sem isso, um card claro
+   ganharia no hover a mesma sombra densa desenhada para fundo preto — que
+   sobre branco lê como sujeira, não como profundidade. */
+@utility elev-hover {
+  box-shadow:
+    inset 0 1px 0 rgb(var(--fg-rgb) / 0.1),
+    0 12px 32px rgb(0 0 0 / var(--shadow-strength));
+}
+
+/* Único uso de glow no elemento primário de uma seção — reforça que aquele
+   é *o* botão da tela. Usa --fg-rgb para inverter com o tom (branco sobre
+   preto / preto sobre branco), mantendo sempre o contraste máximo. */
+@utility glow-accent {
+  box-shadow: 0 0 32px rgb(var(--fg-rgb) / 0.12);
+}
+
+/* Borda com gradiente: assinatura visual. Usar em no máximo 3 elementos
+   da página inteira (card do form, bloco A do bento, card do hero). */
+@utility gradient-border {
+  position: relative;
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(
+      to bottom,
+      rgb(var(--fg-rgb) / 0.16),
+      rgb(var(--fg-rgb) / 0.02) 40%,
+      transparent 70%
+    );
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+}
+
+/* Variante animada da borda-gradiente: um arco de luz percorre o perímetro.
+   Reservada a UM elemento da página (o bloco em destaque do bento) — é a
+   peça que prova que a página está "viva". Dois já viram decoração.
+
+   Anima --angle (registrado acima) em vez de girar o elemento: rotacionar
+   um filho absoluto de 100% forçaria repaint da caixa inteira a cada frame. */
+@utility gradient-border-anim {
+  position: relative;
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: conic-gradient(
+      from var(--angle),
+      transparent 0%,
+      rgb(var(--fg-rgb) / 0.4) 10%,
+      rgb(var(--fg-rgb) / 0.06) 22%,
+      transparent 42%,
+      rgb(var(--fg-rgb) / 0.2) 60%,
+      transparent 78%
+    );
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    animation: border-spin 9s linear infinite;
+  }
+}
+
+/* Holofote que segue o cursor. A posição chega em --mx/--my, escritas por
+   <SpotlightGroup> — um único listener para a grade inteira.
+
+   `isolation: isolate` é obrigatório: cria o contexto de empilhamento que
+   faz o z-index -1 pousar ACIMA do fundo do card e ABAIXO do texto. Sem
+   isso, o brilho ou some atrás do card ou lava a legibilidade do conteúdo. */
+@utility spotlight {
+  position: relative;
+  isolation: isolate;
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 400ms var(--ease-out-expo);
+    background: radial-gradient(
+      260px circle at var(--mx, 50%) var(--my, 50%),
+      rgb(var(--fg-rgb) / 0.08),
+      transparent 72%
+    );
+  }
+  &:hover::after {
+    opacity: 1;
+  }
+}
+
+/* Brilho que atravessa o CTA primário no hover. O botão é preenchido na cor
+   de maior contraste, então o único brilho perceptível sobre ele é feito da
+   cor inversa — daí --inverse-rgb, e não --fg-rgb. */
+@utility sheen {
+  position: relative;
+  overflow: hidden;
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(
+      110deg,
+      transparent 25%,
+      rgb(var(--inverse-rgb) / 0.14) 48%,
+      transparent 72%
+    );
+    transform: translateX(-120%);
+    transition: transform 700ms var(--ease-out-expo);
+  }
+  &:hover::after {
+    transform: translateX(120%);
+  }
+}
+
+/* Deriva lenta das fontes de luz. Sem isso o fundo é uma imagem estática;
+   com isso a página respira. Só `transform` e só na camada do orb, que já
+   está isolada em -z-10 — nenhum texto é repintado. */
+@utility orb-drift {
+  animation: orb-drift 20s ease-in-out infinite alternate;
+}
+
+@utility orb-drift-slow {
+  animation: orb-drift 28s ease-in-out infinite alternate-reverse;
+}
+
+/* Linha do tempo que se desenha conforme a seção entra na tela.
+   Progressive enhancement puro: onde `animation-timeline` não existe
+   (Safari/Firefox hoje) a linha simplesmente já nasce inteira — o layout
+   nunca depende do efeito. Zero JavaScript nos dois caminhos. */
+@utility timeline-fill {
+  @supports (animation-timeline: view()) {
+    @media (prefers-reduced-motion: no-preference) {
+      transform-origin: top;
+      animation: timeline-fill linear both;
+      animation-timeline: view();
+      animation-range: entry 15% cover 40%;
+    }
+  }
+}
+
+/* Entrada escalonada do hero. CSS puro em vez do <Reveal>: o hero é a
+   primeira tela, e esperar hidratação para revelá-la custaria LCP.
+   O <h1> nunca entra aqui — ele é o elemento de LCP e precisa pintar no
+   primeiro frame, sem opacidade zero inicial. */
+@utility enter-up {
+  animation: enter-up 700ms var(--ease-out-expo) backwards;
+}
+
+/* Ruído: elimina o banding de gradiente, que em fundo preto é bem visível
+   e denuncia amadorismo. Tile SVG inline — zero requisição de rede. */
+@utility noise-overlay {
+  position: absolute;
+  inset: 0;
+  opacity: 0.025;
+  mix-blend-mode: overlay;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='128' height='128'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3'/%3E%3C/filter%3E%3Crect width='128' height='128' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Seções abaixo da dobra: evita pintar o que não está visível.
+   contain-intrinsic-size impede que a barra de rolagem mude de tamanho. */
+@utility defer-paint {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 600px;
+}
+
+/* Entrada por scroll do componente <Reveal>. Anima opacity, transform e
+   filter — todas propriedades de composição, nenhuma causa reflow (animar
+   height/top/width derrubaria o INP).
+
+   O blur de saída é o que separa uma entrada "de template" de uma entrada
+   que parece material entrando em foco. 8px é o limite: acima disso o texto
+   fica ilegível no meio da transição e a percepção é de página quebrada. */
+@utility reveal {
+  opacity: 0;
+  transform: translateY(20px);
+  filter: blur(8px);
+  transition:
+    opacity 600ms var(--ease-out-expo),
+    transform 600ms var(--ease-out-expo),
+    filter 600ms var(--ease-out-expo);
+  &[data-visible] {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+
+/* Monograma da marca.
+
+   Entra como máscara, não como <img>: assim o glifo é pintado com
+   currentColor e inverte sozinho junto com o tom da seção — branco sobre
+   preto, preto sobre branco. Um <img> do PNG branco ficaria invisível
+   assim que a marca aparecesse numa seção clara.
+
+   O arquivo é o glifo já recortado e com o fundo convertido em alpha; o
+   original vinha como quadrado 1080x1080 com fundo opaco. */
+@utility logo-mark {
+  mask-image: url("/logo-mark.png");
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: center;
+  background-color: currentColor;
+}
+
+/* Underline que cresce da esquerda — links de navegação. */
+@utility link-underline {
+  position: relative;
+  &::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: -2px;
+    height: 1px;
+    width: 100%;
+    background-color: currentColor;
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 200ms var(--ease-out-expo);
+  }
+  &:hover::after {
+    transform: scaleX(1);
+  }
+}
+
+/* ==========================================================================
+   Keyframes usadas pelos primitivos Radix
+   ========================================================================== */
+
+@keyframes acc-down {
+  from {
+    height: 0;
+    opacity: 0;
+  }
+  to {
+    height: var(--radix-accordion-content-height);
+    opacity: 1;
+  }
+}
+
+@keyframes acc-up {
+  from {
+    height: var(--radix-accordion-content-height);
+    opacity: 1;
+  }
+  to {
+    height: 0;
+    opacity: 0;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/* ==========================================================================
+   Keyframes dos efeitos de ambiente
+   ========================================================================== */
+
+@keyframes border-spin {
+  to {
+    --angle: 360deg;
+  }
+}
+
+@keyframes orb-drift {
+  from {
+    transform: translate3d(-3%, 2%, 0) scale(0.92);
+  }
+  to {
+    transform: translate3d(4%, -5%, 0) scale(1.12);
+  }
+}
+
+/* `scale: 1 0` (propriedade autônoma) e não `transform: scaleY(0)`: o
+   conector também recebe classes utilitárias de transform, e as duas
+   propriedades compõem em vez de uma sobrescrever a outra. */
+@keyframes timeline-fill {
+  from {
+    scale: 1 0;
+  }
+  to {
+    scale: 1 1;
+  }
+}
+
+@keyframes enter-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+    filter: blur(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+
+/* Indicador de rolagem do hero: o traço desce, some e reaparece no topo. */
+@keyframes scroll-cue {
+  0% {
+    transform: translateY(-60%);
+    opacity: 0;
+  }
+  40% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(150%);
+    opacity: 0;
+  }
+}
+
+/* ==========================================================================
+   Movimento reduzido — rede de segurança em CSS.
+   O respeito principal acontece via useReducedMotion no componente <Reveal>;
+   isto cobre transições declaradas puramente em CSS.
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
