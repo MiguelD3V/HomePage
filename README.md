@@ -2,7 +2,7 @@
 
 Home page da MarkePro, agência que une marketing digital e desenvolvimento de software.
 
-Stack: **Next.js 16** (App Router) · **React 19** · **TypeScript** · **Tailwind CSS v4** · **Framer Motion** · **Lucide React** · **React Hook Form + Zod** · primitivos no estilo **shadcn/ui** sobre Radix.
+Stack: **Next.js 16** (App Router) · **React 19** · **TypeScript** · **Tailwind CSS v4** · **Framer Motion** · **Lucide React** · **React Hook Form** · primitivos no estilo **shadcn/ui** sobre Radix.
 
 ---
 
@@ -11,9 +11,11 @@ Stack: **Next.js 16** (App Router) · **React 19** · **TypeScript** · **Tailwi
 ```bash
 npm install
 npm run dev      # http://localhost:3000
-npm run build    # build de produção
-npm start        # serve o build
+npm run build    # gera export estático em out/
+npm start        # serve out/ localmente, para conferir o export
 ```
+
+Build gera export estático puro (`output: "export"` em `next.config.mjs`): a pasta `out/` sai pronta para subir em qualquer hospedagem de arquivos estáticos, sem precisar de Node rodando no servidor.
 
 ---
 
@@ -27,23 +29,12 @@ Estes itens estão preenchidos com **valores de exemplo** e precisam ser trocado
 | [lib/constants.ts](lib/constants.ts) | **Faixas de preço** e **prazos** na FAQ (perguntas 1 e 2) |
 | [lib/constants.ts](lib/constants.ts) | `FORM_BUDGETS` — alinhar com a tabela de preços real |
 | [components/layout/logo.tsx](components/layout/logo.tsx) | Wordmark tipográfico → SVG da identidade visual |
-| `.env.local` | Configurado e testado, mas com destino **temporário** — ver seção abaixo |
 
 **Sobre os preços:** eles estão na FAQ de propósito. Fugir do preço é a principal causa de abandono em página de agência — o visitante presume "caro demais" e sai. Troque os números, não remova a resposta.
 
-### Configuração de ambiente
+### Envio de leads
 
-`.env.local` já existe neste projeto (gitignored, nunca vai para o repositório) com uma chave real da Resend e está **testado e funcionando** — enviei um lead de teste pelo formulário completo e ele chegou por e-mail de verdade.
-
-**⚠️ Mas o destino é temporário.** A conta Resend usada está cadastrada com o e-mail pessoal de quem configurou (`miguel.aramos14@gmail.com`), e sem domínio verificado a Resend só entrega para o e-mail dono da conta — não dá para mandar direto para `markepro319@gmail.com` (o e-mail que a MarkePro efetivamente quer receber) enquanto isso não mudar. Por isso `LEAD_TO_EMAIL` aponta para o e-mail pessoal por enquanto.
-
-Duas formas de resolver, quando fizer sentido:
-1. **Verificar um domínio em [resend.com/domains](https://resend.com/domains)** (precisa do domínio da MarkePro, hoje pendente em `lib/site.ts`). Depois disso, troque `LEAD_FROM_EMAIL` para algo como `leads@markepro.com.br` e `LEAD_TO_EMAIL` para `markepro319@gmail.com` — passa a entregar sem restrição.
-2. **Gerar uma API key de uma conta Resend cadastrada com `markepro319@gmail.com`** — o modo sandbox já entregaria direto para esse e-mail, sem precisar de domínio. Troque `RESEND_API_KEY` e `LEAD_TO_EMAIL`.
-
-Se este projeto for movido para outra máquina/deploy, copie `.env.example` e preencha os valores a partir daí — o `.env.local` real fica só localmente por ser gitignored.
-
-Sem nenhum destino configurado, a Server Action **falha em produção de propósito**: aceitar o lead em silêncio e perdê-lo é pior do que mostrar erro e oferecer o WhatsApp. Em desenvolvimento, o payload é apenas logado no console.
+O formulário multi-step não fala com nenhum servidor: ao enviar, ele monta a mensagem com os dados preenchidos e abre o WhatsApp (`https://wa.me/...`) já com o texto pronto para o visitante conferir e mandar. O número usado é `site.whatsapp` em [lib/site.ts](lib/site.ts). Não há `.env` a configurar para isso — a antiga integração por e-mail (Resend) foi removida.
 
 ---
 
@@ -54,7 +45,6 @@ app/
   layout.tsx            metadata, fontes, JSON-LD, skip link
   page.tsx              composição das 7 seções
   globals.css           tokens do design system + utilitários
-  actions/submit-lead.ts  Server Action (validação Zod + entrega)
   sitemap.ts · robots.ts · opengraph-image.tsx
 components/
   ui/                   primitivos (Button, Input, Accordion, Sheet, Badge…)
@@ -65,8 +55,7 @@ components/
 lib/
   constants.ts          TODO o conteúdo textual
   site.ts               dados institucionais
-  lead.ts               tipos + validação de cliente (sem Zod)
-  schemas.ts            schema Zod — apenas servidor
+  lead.ts               tipos + validação de cliente
   icons.ts              registro de ícones por chave string
 ```
 

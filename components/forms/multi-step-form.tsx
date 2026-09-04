@@ -15,7 +15,6 @@ import { WhatsappButton } from "@/components/common/cta-button";
 import { ChipGroup } from "@/components/forms/chip-group";
 import { FormField } from "@/components/forms/form-field";
 import { Button } from "@/components/ui/button";
-import { submitLead } from "@/app/actions/submit-lead";
 import { trackFormStep, trackFormSubmit } from "@/lib/analytics";
 import {
   FORM_BUDGETS,
@@ -28,14 +27,14 @@ import {
   validateLead,
   type LeadInput,
 } from "@/lib/lead";
+import { site } from "@/lib/site";
 
 /**
  * Resolver artesanal no lugar do `zodResolver`.
  *
  * Motivo medido: importar o resolver do Zod arrastava o Zod inteiro para o
  * bundle do cliente. São 3 campos obrigatórios — validá-los à mão custa 10
- * linhas. O Zod continua validando no servidor, que é onde a validação
- * realmente protege alguma coisa.
+ * linhas, e não há mais servidor para o Zod validar de todo modo.
  */
 const resolver: Resolver<LeadInput> = async (values) => {
   const errors = validateLead(values);
@@ -43,6 +42,25 @@ const resolver: Resolver<LeadInput> = async (values) => {
     ? { values: {}, errors }
     : { values, errors: {} };
 };
+
+/** Monta a mensagem pré-preenchida do WhatsApp a partir dos dados do form. */
+function buildWhatsappMessage(data: LeadInput) {
+  const lines = [
+    "Olá! Vim pelo site da MarkePro e quero falar sobre um projeto.",
+    "",
+    `Nome: ${data.name}`,
+    `E-mail: ${data.email}`,
+    `Serviços: ${data.services.join(", ")}`,
+  ];
+
+  if (data.company) lines.push(`Empresa: ${data.company}`);
+  if (data.companySize) lines.push(`Porte: ${data.companySize}`);
+  if (data.timeline) lines.push(`Prazo: ${data.timeline}`);
+  if (data.budget) lines.push(`Investimento: ${data.budget}`);
+  if (data.message) lines.push(`Mensagem: ${data.message}`);
+
+  return lines.join("\n");
+}
 
 const STEPS = [
   {
@@ -69,16 +87,15 @@ const STEPS = [
  * - Validação no blur, não a cada tecla: validar enquanto se digita mostra
  *   erro antes de o usuário terminar, o que é agressivo e aumenta o abandono.
  * - Voltar nunca perde dados — o estado vive no formulário, não no passo.
- * - Sem CAPTCHA: honeypot + tempo mínimo no servidor. CAPTCHA custa
- *   conversão real para barrar spam que dá para barrar de graça.
+ * - Envio abre o WhatsApp com a mensagem pronta, em vez de mandar por
+ *   servidor: sem backend, sem chave de API para configurar, sem lead
+ *   perdido por falha de entrega de e-mail.
  */
 export function MultiStepForm() {
   const [step, setStep] = React.useState(1);
-  const [submitState, setSubmitState] = React.useState<
-    "idle" | "loading" | "success" | "error"
-  >("idle");
-  const [errorMessage, setErrorMessage] = React.useState("");
-  const startedAt = React.useRef(Date.now());
+  const [submitState, setSubmitState] = React.useState<"idle" | "success">(
+    "idle",
+  );
   const headingRef = React.useRef<HTMLParagraphElement>(null);
   const reduce = useReducedMotion();
 
@@ -105,7 +122,6 @@ export function MultiStepForm() {
       phone: "",
       company: "",
       message: "",
-      website: "",
     },
   });
 
@@ -156,18 +172,16 @@ export function MultiStepForm() {
     requestAnimationFrame(() => headingRef.current?.focus());
   }
 
-  async function onSubmit(data: LeadInput) {
-    setSubmitState("loading");
-    const result = await submitLead({ ...data, startedAt: startedAt.current });
-
-    if (result.status === "success") {
-      trackFormSubmit(data.services);
-      setSubmitState("success");
-      return;
-    }
-
-    setErrorMessage(result.message);
-    setSubmitState("error");
+  function onSubmit(data: LeadInput) {
+    // window.open síncrono, dentro do handler de submit: é o que mantém o
+    // navegador tratando isso como abertura de aba pedida pelo usuário, em
+    // vez de pop-up bloqueado.
+    const url = `https://wa.me/${site.whatsapp}?text=${encodeURIComponent(
+      buildWhatsappMessage(data),
+    )}`;
+    window.open(url, "_blank", "noopener,noreferrer");
+    trackFormSubmit(data.services);
+    setSubmitState("success");
   }
 
   /* --- Estado de sucesso: substitui o card inteiro --------------------- */
@@ -181,10 +195,11 @@ export function MultiStepForm() {
             aria-hidden="true"
           />
           <div role="status">
-            <h3 className="text-h3 text-primary">Recebemos sua solicitação.</h3>
+            <h3 className="text-h3 text-primary">Abrimos o WhatsApp para você.</h3>
             <p className="mt-3 max-w-[46ch] text-body-sm text-muted">
-              Você recebe nosso retorno em até 24 horas no WhatsApp informado.
-              Se preferir adiantar a conversa, chame a gente por lá.
+              Sua mensagem já foi montada com os dados que você preencheu — é
+              só conferir e enviar por lá. Não abriu automaticamente? Use o
+              botão abaixo.
             </p>
           </div>
           <WhatsappButton source="form_sucesso" className="mt-2" />
@@ -350,21 +365,6 @@ export function MultiStepForm() {
                   error={errors.message?.message}
                   {...register("message")}
                 />
-
-                {/* Honeypot: invisível para humanos, irresistível para bots.
-                    aria-hidden + tabIndex mantém leitores de tela fora dele. */}
-                <div
-                  aria-hidden="true"
-                  className="absolute left-[-9999px] h-0 w-0 overflow-hidden"
-                >
-                  <label htmlFor="website">Não preencha este campo</label>
-                  <input
-                    id="website"
-                    tabIndex={-1}
-                    autoComplete="off"
-                    {...register("website")}
-                  />
-                </div>
               </div>
             ) : null}
             </m.div>
@@ -372,41 +372,16 @@ export function MultiStepForm() {
         </div>
       </LazyMotion>
 
-      {submitState === "error" ? (
-        <div
-          role="alert"
-          className="mt-6 rounded-md border border-error/30 bg-error/5 p-4"
-        >
-          <p className="text-body-sm text-error">{errorMessage}</p>
-          <WhatsappButton
-            source="form_erro"
-            variant="ghost"
-            size="sm"
-            className="mt-2 px-0"
-            label="Falar no WhatsApp"
-          />
-        </div>
-      ) : null}
-
       <div className="mt-8 flex items-center gap-3">
         {step > 1 ? (
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={goBack}
-            disabled={submitState === "loading"}
-          >
+          <Button type="button" variant="secondary" onClick={goBack}>
             <ArrowLeft aria-hidden="true" />
             Voltar
           </Button>
         ) : null}
 
         {isLastStep ? (
-          <Button
-            type="submit"
-            className="flex-1"
-            loading={submitState === "loading"}
-          >
+          <Button type="submit" className="flex-1">
             Enviar
             <ArrowRight aria-hidden="true" />
           </Button>

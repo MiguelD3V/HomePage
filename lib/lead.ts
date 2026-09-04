@@ -1,14 +1,10 @@
 /**
- * Tipos, mensagens e validação do lead — SEM dependência de Zod.
+ * Tipos, mensagens e validação do lead.
  *
- * Existe separado de `schemas.ts` por uma razão de performance medida:
- * qualquer import de valor vindo de `schemas.ts` arrasta o Zod inteiro para
- * o bundle do cliente (~90 KB gzip). O formulário só precisa validar 3
- * campos, então validá-los à mão no cliente e manter o Zod exclusivamente no
- * servidor (Server Action) custa poucas linhas e devolve o orçamento de JS.
- *
- * As mensagens vivem aqui e são reaproveitadas pelo schema do servidor:
- * uma fonte só, dois consumidores.
+ * O envio não passa mais por servidor (era Server Action + Resend); o
+ * formulário monta a mensagem e abre o WhatsApp direto no navegador. Por
+ * isso a validação vive só aqui, no cliente — não há mais nada do lado do
+ * servidor para proteger.
  */
 
 export type LeadInput = {
@@ -21,8 +17,6 @@ export type LeadInput = {
   phone: string;
   company?: string;
   message?: string;
-  /** Honeypot. */
-  website?: string;
 };
 
 export const MESSAGES = {
@@ -78,7 +72,3 @@ export function validateLead(values: LeadInput): FieldErrors {
 
   return errors;
 }
-
-export type LeadActionResult =
-  | { status: "success" }
-  | { status: "error"; message: string };
