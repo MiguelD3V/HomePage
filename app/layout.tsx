@@ -2,6 +2,10 @@ import type { Metadata, Viewport } from "next";
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
 
+import {
+  AnalyticsScripts,
+  MetaPixelNoscript,
+} from "@/components/analytics/analytics-scripts";
 import { Footer } from "@/components/layout/footer";
 import { Navbar } from "@/components/layout/navbar";
 import { jsonLd } from "@/lib/structured-data";
@@ -82,8 +86,10 @@ export default function RootLayout({
         <noscript>
           <style>{`[data-reveal]{opacity:1!important;transform:none!important;filter:none!important}`}</style>
         </noscript>
+        <AnalyticsScripts />
       </head>
       <body className="antialiased">
+        <MetaPixelNoscript />
         <a
           href="#conteudo"
           className="sr-only rounded-md bg-accent px-4 py-2 text-inverse focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50"
